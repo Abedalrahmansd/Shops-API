@@ -1,32 +1,18 @@
-// In src/controllers/feed.js (for Q5: Home Feed algorithm)
-// GET /api/feed
+// src/controllers/feed.js
 import Product from '../models/Product.js';
 
 export const getFeed = async (req, res) => {
   const { page = 1, limit = 10, all = false } = req.query;
-  const user = req.user; // From auth
+  const user = await User.findById(req.user.id);
 
-  const match = {};
-  if (user.interests.length > 0) {
-    match.tags = { $in: user.interests };
-  }
+  const match = user.interests.length ? { tags: { $in: user.interests } } : {};
 
   const products = await Product.aggregate([
     { $match: match },
-    {
-      $addFields: {
-        score: {
-          $add: [
-            { $multiply: ['$rating', 2] }, // Weight rating higher
-            '$views',
-            '$likes'
-          ]
-        }
-      }
-    },
+    { $addFields: { score: { $add: [{ $multiply: ['$views.length', 1] }, { $multiply: ['$likes.length', 2] }] } } }, // Adjusted for arrays
     { $sort: { score: -1 } },
-    all ? {} : { $skip: (page - 1) * limit },
-    all ? {} : { $limit: parseInt(limit) }
+    { $skip: all ? 0 : (page - 1) * limit },
+    { $limit: all ? Infinity : parseInt(limit) },
   ]);
 
   res.json({ success: true, products });

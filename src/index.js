@@ -11,6 +11,13 @@ import shopRoutes from './routes/shop.js';
 import productRoutes from './routes/product.js';
 import cartRoutes from './routes/cart.js';
 import orderRoutes from './routes/order.js';
+import reviewRoutes from './routes/review.js';
+import searchRoutes from './routes/search.js';
+import analyticsRoutes from './routes/analytics.js';
+import adminRoutes from './routes/admin.js';
+import chatRoutes from './routes/chat.js';
+import feedRoutes from './routes/feed.js';
+import { startCron } from './utils/cron.js';
 
 import { errorHandler } from './middleware/error.js';
 import mongoSanitize from 'mongo-sanitize';
@@ -53,9 +60,20 @@ app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/carts', cartRoutes);
 app.use('/api/v1/orders', orderRoutes);
 
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/chats', chatRoutes);
+app.use('/api/feed', feedRoutes);
+
+// Start cron
+startCron();
+
 app.use('/', (req, res) => {
   res.status(404).json({ message: 'Endpoint not found' });
 });
+
 app.use(errorHandler); // At end of middleware stack
 
 const PORT = config.PORT || 5000;
