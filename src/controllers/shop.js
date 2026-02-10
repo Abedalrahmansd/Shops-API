@@ -2,6 +2,7 @@
 import Shop from '../models/Shop.js';
 import User from '../models/User.js';
 import { slugify } from '../utils/slugify.js';
+import mongoose from 'mongoose';
 
 export const createShop = async (req, res) => {
   const { title, description, tags, category, phone, uniqueId } = req.body;
@@ -35,10 +36,17 @@ export const createShop = async (req, res) => {
 };
 
 export const getShop = async (req, res) => {
-  const shop = await Shop.findOne({ uniqueId: req.params.id } || { _id: req.params.id }).populate('owner', 'name');
+  const query = { uniqueId: req.params.id };
+  if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+    query.$or = [{ uniqueId: req.params.id }, { _id: req.params.id }];
+    delete query.uniqueId;
+  }
+  const shop = await Shop.findOne(query).populate('owner', 'name');
   if (!shop || !shop.isActive) return res.status(404).json({ message: 'Shop not found or closed' });
-  if (!shop.views.includes(req.user.id)) {
-    shop.views.push(req.user.id);
+  if(req.user != null){
+    if (!shop.views.includes(req.user.id)) {
+      shop.views.push(req.user.id);
+    }
   }
   await shop.save();
   res.json({ success: true, shop });

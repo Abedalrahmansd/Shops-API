@@ -24,13 +24,32 @@ import mongoSanitize from 'mongo-sanitize';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
+import logger from './utils/logger.js';
+
+import { generalLimiter } from './middleware/rateLimit.js';
+import {Server} from 'socket.io';
+import http from 'http';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+
+// Replace console with logger
+console.log = logger.info.bind(logger);
+console.error = logger.error.bind(logger);
+
+// Server with Socket.io
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: process.env.CORS_ORIGIN } });
+io.on('connection', (socket) => {
+  // Future: Auth via JWT, namespaces
+  socket.emit('message', 'Chat connected - future');
+});
+
 app.use(express.json());
-app.use(helmet());
-app.use(rateLimit({ windowMs: config.RATE_LIMIT_WINDOW * 60 * 1000, max: config.RATE_LIMIT_MAX }));
+app.use(generalLimiter);
+app.use(helmet({ contentSecurityPolicy: false }));
 // Serve static files from uploads folder
 app.use('/uploads', express.static('src/uploads'));
 
@@ -48,7 +67,7 @@ if (!config.DB_URI) {
     throw new Error('DB_URI is not defined in environment variables');
 }
 // Connect to MongoDB
-mongoose.connect(config.DB_URI_TEST)
+mongoose.connect(config.DB_URI)
   .then(() => console.log(`MongoDB connected successfully in ${config.NODE_ENV} mode.`))
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -67,6 +86,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/feed', feedRoutes);
 
+// App version
+app.get('/api/app-version', (req, res) => {
+  res.json({ success: true, version: process.env.APP_VERSION });
+});
+
 // Start cron
 startCron();
 
@@ -77,5 +101,5 @@ app.use('/', (req, res) => {
 app.use(errorHandler); // At end of middleware stack
 
 const PORT = config.PORT || 5000;
-app.listen(PORT, () => console.log(`Server on http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Server on http://localhost:${PORT}`));
 export default app; // Export for testing

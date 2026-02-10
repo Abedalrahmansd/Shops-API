@@ -20,5 +20,5 @@ const shopSchema = new mongoose.Schema({
   messageTemplate: { type: String, default: 'السلام عليكم\n%%products%%\nالاجمالي: {{total}}\n' }, // Customizable
   isActive: { type: Boolean, default: true },
 });
-shopSchema.index({ title: 'text', description: 'text', tags: 'text', uniqueId: 1 });
+shopSchema.index({ title: 'text', description: 'text', tags: 'text', uniqueId: 1, owner: 1 });
 export default mongoose.model('Shop', shopSchema);

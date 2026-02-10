@@ -1,5 +1,6 @@
 // src/controllers/feed.js
 import Product from '../models/Product.js';
+import User from '../models/User.js';
 
 export const getFeed = async (req, res) => {
   const { page = 1, limit = 10, all = false } = req.query;
@@ -9,7 +10,7 @@ export const getFeed = async (req, res) => {
 
   const products = await Product.aggregate([
     { $match: match },
-    { $addFields: { score: { $add: [{ $multiply: ['$views.length', 1] }, { $multiply: ['$likes.length', 2] }] } } }, // Adjusted for arrays
+    { $addFields: { score: { $add: [{ $multiply: [{ $size: '$views' }, 1] }, { $multiply: [{ $size: '$likes' }, 2] }] } } },
     { $sort: { score: -1 } },
     { $skip: all ? 0 : (page - 1) * limit },
     { $limit: all ? Infinity : parseInt(limit) },

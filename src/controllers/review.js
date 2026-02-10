@@ -1,6 +1,7 @@
 // src/controllers/review.js
 import Review from '../models/Review.js';
 import Shop from '../models/Shop.js';
+import Report from '../models/Report.js';
 
 export const createReview = async (req, res) => {
   const { rating, comment } = req.body;

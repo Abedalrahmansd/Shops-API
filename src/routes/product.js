@@ -7,7 +7,7 @@ import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
 router.post('/shops/:shopId', authMiddleware, isShopOwner, upload.array('images', 5), createProduct);
-router.get('/shops/:shopId', authMiddleware, getProducts);
+router.get('/shops/:shopId', getProducts);
 router.post('/:productId/like', authMiddleware, likeProduct);
 router.get('/:productId',authMiddleware, getProduct);
 router.patch('/:productId', authMiddleware, isProductOwner, upload.array('images', 5), updateProduct);
