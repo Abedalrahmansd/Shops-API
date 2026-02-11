@@ -3,9 +3,16 @@ import Shop from '../models/Shop.js';
 import User from '../models/User.js';
 import { slugify } from '../utils/slugify.js';
 import mongoose from 'mongoose';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import Report from '../models/Report.js';
 
-export const createShop = async (req, res) => {
+export const createShop = asyncHandler(async (req, res) => {
   const { title, description, tags, category, phone, uniqueId } = req.body;
+  
+  if (!title || !phone) {
+    return res.status(400).json({ message: 'Title and phone are required' });
+  }
+
   let finalUniqueId = uniqueId || slugify(title);
 
   // Check uniqueness
@@ -19,7 +26,7 @@ export const createShop = async (req, res) => {
     owner: req.user.id,
     title,
     description,
-    tags,
+    tags: tags || [],
     category,
     phone,
     uniqueId: finalUniqueId,
@@ -33,52 +40,85 @@ export const createShop = async (req, res) => {
   await user.save();
 
   res.status(201).json({ success: true, shop });
-};
+});
 
-export const getShop = async (req, res) => {
-  const query = { uniqueId: req.params.id };
+export const getShop = asyncHandler(async (req, res) => {
+  const query = {};
+  
   if (mongoose.Types.ObjectId.isValid(req.params.id)) {
     query.$or = [{ uniqueId: req.params.id }, { _id: req.params.id }];
-    delete query.uniqueId;
+  } else {
+    query.uniqueId = req.params.id;
   }
-  const shop = await Shop.findOne(query).populate('owner', 'name');
-  if (!shop || !shop.isActive) return res.status(404).json({ message: 'Shop not found or closed' });
-  if(req.user != null){
-    if (!shop.views.includes(req.user.id)) {
-      shop.views.push(req.user.id);
-    }
+
+  const shop = await Shop.findOne(query)
+    .populate('owner', 'name avatar')
+    .populate('sections.products', 'title price images');
+
+  if (!shop || !shop.isActive) {
+    return res.status(404).json({ message: 'Shop not found or closed' });
   }
-  await shop.save();
+
+  // Track views for authenticated users
+  if (req.user?.id && !shop.views.includes(req.user.id)) {
+    shop.views.push(req.user.id);
+    await shop.save();
+  }
+
   res.json({ success: true, shop });
-};
+});
 
-export const updateShop = async (req, res) => {
-  const updates = req.body; // incl. customization, icon, messageTemplate
-  const shop = await Shop.findByIdAndUpdate(req.params.shopId, updates, { new: true });
+export const updateShop = asyncHandler(async (req, res) => {
+  const updates = { ...req.body };
+  const shop = await Shop.findByIdAndUpdate(
+    req.params.shopId, 
+    updates, 
+    { new: true, runValidators: true }
+  );
+
+  if (!shop) return res.status(404).json({ message: 'Shop not found' });
+
   res.json({ success: true, shop });
-};
+});
 
-export const deactivateShop = async (req, res) => {
-  await Shop.findByIdAndUpdate(req.params.shopId, { isActive: false });
-  res.json({ success: true, message: 'Shop deactivated' });
-};
+export const deactivateShop = asyncHandler(async (req, res) => {
+  const shop = await Shop.findByIdAndUpdate(
+    req.params.shopId, 
+    { isActive: false },
+    { new: true }
+  );
+  
+  if (!shop) return res.status(404).json({ message: 'Shop not found' });
 
-export const getMyShops = async (req, res) => {
+  res.json({ success: true, message: 'Shop deactivated', shop });
+});
+
+export const getMyShops = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id).populate('shops');
-  res.json({ success: true, shops: user.shops });
-};
+  res.json({ success: true, shops: user.shops || [] });
+});
 
-export const setPrimary = async (req, res) => {
+export const setPrimary = asyncHandler(async (req, res) => {
   const { shopId } = req.body;
+  
+  if (!mongoose.Types.ObjectId.isValid(shopId)) {
+    return res.status(400).json({ message: 'Invalid shop ID' });
+  }
+
   const user = await User.findById(req.user.id);
-  if (!user.shops.includes(shopId)) return res.status(400).json({ message: 'Not your shop' });
+  if (!user.shops.includes(shopId)) {
+    return res.status(400).json({ message: 'Not your shop' });
+  }
+
   user.primaryShop = shopId;
   await user.save();
-  res.json({ success: true });
-};
+  res.json({ success: true, message: 'Primary shop updated' });
+});
 
-export const followShop = async (req, res) => {
+export const followShop = asyncHandler(async (req, res) => {
   const shop = await Shop.findById(req.params.id);
+  if (!shop) return res.status(404).json({ message: 'Shop not found' });
+
   const index = shop.followers.indexOf(req.user.id);
   if (index === -1) {
     shop.followers.push(req.user.id);
@@ -86,11 +126,14 @@ export const followShop = async (req, res) => {
     shop.followers.splice(index, 1);
   }
   await shop.save();
-  res.json({ success: true, followers: shop.followers.length });
-};
 
-export const likeShop = async (req, res) => {
+  res.json({ success: true, followers: shop.followers.length, following: index === -1 });
+});
+
+export const likeShop = asyncHandler(async (req, res) => {
   const shop = await Shop.findById(req.params.id);
+  if (!shop) return res.status(404).json({ message: 'Shop not found' });
+
   const index = shop.likes.indexOf(req.user.id);
   if (index === -1) {
     shop.likes.push(req.user.id);
@@ -98,23 +141,51 @@ export const likeShop = async (req, res) => {
     shop.likes.splice(index, 1);
   }
   await shop.save();
-  res.json({ success: true, likes: shop.likes.length });
-};
 
-export const shareShop = async (req, res) => {
-  const shop = await Shop.findByIdAndUpdate(req.params.id, { $inc: { shares: 1 } }, { new: true });
+  res.json({ success: true, likes: shop.likes.length, liked: index === -1 });
+});
+
+export const shareShop = asyncHandler(async (req, res) => {
+  const shop = await Shop.findByIdAndUpdate(
+    req.params.id, 
+    { $inc: { shares: 1 } }, 
+    { new: true }
+  );
+  
+  if (!shop) return res.status(404).json({ message: 'Shop not found' });
+
   res.json({ success: true, shares: shop.shares });
-};
+});
 
-export const reportShop = async (req, res) => {
+export const reportShop = asyncHandler(async (req, res) => {
   const { reason } = req.body;
-  // Create Report (model not yet, but placeholder)
-  // For now: 
-  console.log(`Report: ${reason}`);
-  res.json({ success: true, message: 'Reported' });
-};
+  
+  if (!reason || reason.length < 10) {
+    return res.status(400).json({ message: 'Reason must be at least 10 characters' });
+  }
 
-export const verifyShop = async (req, res) => {
-  await Shop.findByIdAndUpdate(req.params.id, { isVerified: true });
-  res.json({ success: true });
-};
+  const shop = await Shop.findById(req.params.id);
+  if (!shop) return res.status(404).json({ message: 'Shop not found' });
+
+  const report = new Report({
+    reporter: req.user.id,
+    targetType: 'shop',
+    targetId: shop._id,
+    reason,
+  });
+  await report.save();
+
+  res.json({ success: true, message: 'Shop reported successfully' });
+});
+
+export const verifyShop = asyncHandler(async (req, res) => {
+  const shop = await Shop.findByIdAndUpdate(
+    req.params.id, 
+    { isVerified: true },
+    { new: true }
+  );
+  
+  if (!shop) return res.status(404).json({ message: 'Shop not found' });
+
+  res.json({ success: true, message: 'Shop verified', shop });
+});

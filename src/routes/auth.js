@@ -1,19 +1,24 @@
 // src/routes/auth.js
 import express from 'express';
-import { register, login, verifyEmail, forgotPassword, resetPassword, resendVerification, googleAuth, googleCallback } from '../controllers/auth.js';
-import { validate, registerSchema } from '../middleware/validate.js';
+import { register, login, refreshToken, verifyEmail, forgotPassword, resetPassword, resendVerification, googleAuth, googleCallback, logout } from '../controllers/auth.js';
+import { validate, registerSchema, loginSchema, verifyEmailSchema, forgotPasswordSchema, resendVerificationSchema, resetPasswordSchema } from '../middleware/validate.js';
 import { authLimiter } from '../middleware/rateLimit.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 router.use(authLimiter);
+
 router.post('/register', validate(registerSchema), register);
-router.post('/login', login);
-router.post('/verify-email', verifyEmail);
-router.post('/resend-verification', resendVerification);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
-// router.post('/social-login', socialLogin);
-router.get('/google/callback', googleCallback);
+router.post('/login', validate(loginSchema), login);
+router.post('/refresh-token', refreshToken);
+router.post('/verify-email', validate(verifyEmailSchema), verifyEmail);
+router.post('/resend-verification', validate(resendVerificationSchema), resendVerification);
+router.post('/forgot-password', validate(forgotPasswordSchema), forgotPassword);
+router.post('/reset-password', validate(resetPasswordSchema), resetPassword);
+router.post('/logout', authMiddleware, logout);
+
+// Google OAuth
 router.get('/google', googleAuth);
+router.get('/google/callback', googleCallback);
 
 export default router;

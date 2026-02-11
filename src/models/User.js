@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
+
 const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true }, // Hashed
-  name: { type: String, required: true },
+  name: { type: String, required: true, trim: true },
   bio: { type: String },
   avatar: { type: String }, // URL to upload
   phone: { type: String, unique: true, sparse: true }, // Optional unique
@@ -12,17 +13,15 @@ const userSchema = new mongoose.Schema({
   isAdmin: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true }, // For deactivation
   deactivationDate: { type: Date }, // For 30-day purge
-});
-
-userSchema.add({
   isVerified: { type: Boolean, default: false },
   verificationCode: { type: String }, // Plain or hashed
   verificationExpiry: { type: Date },
-});
-
-userSchema.add({
   googleId: { type: String, unique: true, sparse: true }, // For linking
-});
+  refreshToken: { type: String }, // For token revocation
+  lastLogin: { type: Date },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+}, { timestamps: true });
 
 userSchema.index({ email: 'text', name: 'text' }); // Search
 export default mongoose.model('User', userSchema);
