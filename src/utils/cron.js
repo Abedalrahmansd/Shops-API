@@ -8,6 +8,10 @@ const purgeJob = new cron.CronJob('0 0 * * *', async () => {
   await User.deleteMany({ isActive: false, deactivationDate: { $lt: thirtyDaysAgo } });
   // Optional: Clean old carts (e.g., >90 days inactive)
   await Cart.deleteMany({ updatedAt: { $lt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) } });
+  await User.updateMany(
+  { verificationExpiry: { $lt: Date.now() } },
+  { $unset: { verificationCode: '', verificationExpiry: '' } }
+);
 });
 
 export const startCron = () => purgeJob.start();

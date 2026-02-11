@@ -13,5 +13,16 @@ const userSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true }, // For deactivation
   deactivationDate: { type: Date }, // For 30-day purge
 });
+
+userSchema.add({
+  isVerified: { type: Boolean, default: false },
+  verificationCode: { type: String }, // Plain or hashed
+  verificationExpiry: { type: Date },
+});
+
+userSchema.add({
+  googleId: { type: String, unique: true, sparse: true }, // For linking
+});
+
 userSchema.index({ email: 'text', name: 'text' }); // Search
 export default mongoose.model('User', userSchema);

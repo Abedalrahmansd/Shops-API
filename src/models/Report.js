@@ -9,4 +9,6 @@ const reportSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'resolved'], default: 'pending' },
 }, { timestamps: true });
 
+reportSchema.index({ targetType: 1, targetId: 1, status: 1 }); // For getReports
+
 export default mongoose.model('Report', reportSchema);

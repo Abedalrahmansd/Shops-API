@@ -6,7 +6,8 @@ export const authMiddleware = (req, res, next) => {
   if (!token) return res.status(401).json({ message: 'No token' });
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET);
-    req.user = decoded; // {id, isAdmin}
+    if (!decoded.isVerified) return res.status(403).json({ message: 'Email not verified' });
+    req.user = decoded; // {id, isAdmin, isVerified}
     next();
   } catch (err) {
     res.status(401).json({ message: 'Invalid token' });

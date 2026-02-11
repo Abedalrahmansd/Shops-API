@@ -13,7 +13,12 @@ export const search = async (req, res) => {
   const query = idQuery ? { $or: [textQuery, idQuery] } : textQuery;
 
   if (type === 'all' || type === 'users') {
-    results.users = await User.find(query).select('-password')
+    results.users = await User.find({
+      $or: [
+        query,
+        { bio: { $regex: q, $options: 'i' } },
+      ]
+    }).select('-password')
       .skip(all ? 0 : (page - 1) * limit)
       .limit(all ? Infinity : parseInt(limit));
   }
@@ -23,10 +28,15 @@ export const search = async (req, res) => {
       .limit(all ? Infinity : parseInt(limit));
   }
   if (type === 'all' || type === 'products') {
-    results.products = await Product.find(query)
-      .skip(all ? 0 : (page - 1) * limit)
-      .limit(all ? Infinity : parseInt(limit));
-  }
+  results.products = await Product.find({
+    $or: [
+      query, // Existing text/ID
+      { description: { $regex: q, $options: 'i' } },
+      { tags: { $elemMatch: { $regex: q, $options: 'i' } } }, // Assuming tags array in Product (add if not)
+    ]
+  }).skip(all ? 0 : (page - 1) * limit)
+    .limit(all ? Infinity : parseInt(limit));
+}
 
   res.json({ success: true, results });
 };

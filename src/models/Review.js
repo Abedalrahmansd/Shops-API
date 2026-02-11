@@ -9,4 +9,6 @@ const reviewSchema = new mongoose.Schema({
   photo: { type: String }, // URL
 }, { timestamps: true });
 
+reviewSchema.index({ shop: 1, user: 1 }); // For getReviews queries
+
 export default mongoose.model('Review', reviewSchema);

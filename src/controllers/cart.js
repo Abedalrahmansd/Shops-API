@@ -20,7 +20,11 @@ export const addToCart = async (req, res) => {
   let cart = await Cart.findOne({ user: req.user.id });
   if (!cart) cart = new Cart({ user: req.user.id, items: [] });
 
+  const product = await Product.findById(productId);
+  if (product.stock < quantity) return res.status(400).json({ message: 'Out of stock' });
+  
   const index = cart.items.findIndex(i => i.product.toString() === productId);
+  
   if (index > -1) cart.items[index].quantity += quantity || 1;
   else cart.items.push({ shop: shopId, product: productId, quantity: quantity || 1 });
 

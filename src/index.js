@@ -25,10 +25,13 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 import logger from './utils/logger.js';
+import morgan from 'morgan';
 
 import { generalLimiter } from './middleware/rateLimit.js';
 import {Server} from 'socket.io';
 import http from 'http';
+
+import passport from './config/passport.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -47,6 +50,8 @@ io.on('connection', (socket) => {
   socket.emit('message', 'Chat connected - future');
 });
 
+app.use(passport.initialize()); // No session needed for JWT, but required
+
 app.use(express.json());
 app.use(generalLimiter);
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -58,6 +63,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } })); // Log to Winston
 
 // Connect DB
 // Set custom DNS servers to avoid potential DNS resolution issues with MongoDB Atlas
