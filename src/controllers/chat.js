@@ -78,7 +78,11 @@ export const getChatHistory = asyncHandler(async (req, res) => {
 });
 
 export const sendMessage = asyncHandler(async (req, res) => {
-  const { shopId, content, productId } = req.body;
+  let { shopId, content, productId } = req.body;
+
+  if(!shopId){
+    shopId = req.params.shopId; // Support both body and URL param
+  }
 
   if (!content || content.trim().length === 0) {
     return res.status(400).json({ message: 'Message content is required' });

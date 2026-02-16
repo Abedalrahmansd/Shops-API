@@ -31,7 +31,7 @@ export const getShopAnalytics = asyncHandler(async (req, res) => {
 
   // Top products
   const topProducts = await Order.aggregate([
-    { $match: { shop: mongoose.Types.ObjectId(shopId), ...dateFilter } },
+    { $match: { shop: new mongoose.Types.ObjectId(shopId), ...dateFilter } },
     { $unwind: '$items' },
     { $group: { 
         _id: '$items.product', 
@@ -48,7 +48,7 @@ export const getShopAnalytics = asyncHandler(async (req, res) => {
 
   // Revenue by day
   const revenueByDay = await Order.aggregate([
-    { $match: { shop: mongoose.Types.ObjectId(shopId), ...dateFilter } },
+    { $match: { shop: new mongoose.Types.ObjectId(shopId), ...dateFilter } },
     { $group: { 
         _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, 
         total: { $sum: '$total' },
@@ -80,12 +80,13 @@ export const getProductAnalytics = asyncHandler(async (req, res) => {
 
   const product = await Product.findById(productId).populate('shop');
   if (!product) return res.status(404).json({ message: 'Product not found' });
+  const orders = await Order.find({ 'items.product': productId });
 
   const stats = {
     views: product.views.length,
     likes: product.likes.length,
     stock: product.stock,
-    ordersCount: 0, // Can aggregate from orders
+    ordersCount: orders.length,
   };
 
   res.json({ success: true, stats });

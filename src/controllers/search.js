@@ -18,18 +18,16 @@ export const search = asyncHandler(async (req, res) => {
   const skip = all ? 0 : (parseInt(page) - 1) * parseInt(limit);
   const limit_int = all ? undefined : parseInt(limit);
 
-  // Text search query
-  const textQuery = { $text: { $search: query } };
+  // Build query using only regex to avoid text index conflicts
   const idQuery = mongoose.Types.ObjectId.isValid(query) ? { _id: query } : null;
-  const finalQuery = idQuery ? { $or: [textQuery, idQuery] } : textQuery;
 
   if (type === 'all' || type === 'users') {
     results.users = await User.find({
       $or: [
-        finalQuery,
+        idQuery,
         { bio: { $regex: query, $options: 'i' } },
         { name: { $regex: query, $options: 'i' } },
-      ]
+      ].filter(Boolean)
     })
       .select('-password -refreshToken')
       .skip(skip)
@@ -40,11 +38,11 @@ export const search = asyncHandler(async (req, res) => {
   if (type === 'all' || type === 'shops') {
     results.shops = await Shop.find({
       $or: [
-        finalQuery,
+        idQuery,
         { uniqueId: { $regex: query, $options: 'i' } },
         { title: { $regex: query, $options: 'i' } },
         { description: { $regex: query, $options: 'i' } },
-      ]
+      ].filter(Boolean)
     })
       .populate('owner', 'name avatar')
       .skip(skip)
@@ -55,10 +53,10 @@ export const search = asyncHandler(async (req, res) => {
   if (type === 'all' || type === 'products') {
     results.products = await Product.find({
       $or: [
-        finalQuery,
+        idQuery,
         { title: { $regex: query, $options: 'i' } },
         { description: { $regex: query, $options: 'i' } },
-      ]
+      ].filter(Boolean)
     })
       .populate('shop', 'title')
       .skip(skip)
@@ -83,13 +81,13 @@ export const getCategories = asyncHandler(async (req, res) => {
 export const getTrending = asyncHandler(async (req, res) => {
   // Get trending shops by views and likes
   const trendingShops = await Shop.find({ isActive: true })
-    .sort({ views: -1, likes: -1, rating: -1 })
+    .sort({ views: -1, rating: -1, createdAt: -1 })
     .limit(10)
     .populate('owner', 'name avatar');
 
   // Get trending products by views and likes
   const trendingProducts = await Product.find()
-    .sort({ views: -1, likes: -1 })
+    .sort({ views: -1, createdAt: -1 })
     .limit(10)
     .populate('shop', 'title');
 

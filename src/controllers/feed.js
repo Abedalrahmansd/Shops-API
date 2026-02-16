@@ -26,7 +26,7 @@ export const getFeed = asyncHandler(async (req, res) => {
       .populate('shop', 'title rating')
       .skip(skip)
       .limit(limit_int)
-      .sort({ likes: -1, views: -1, createdAt: -1 });
+      .sort({ likes: -1, createdAt: -1 });
   }
 
   // Recommended shops based on interests and followed shops
@@ -50,11 +50,11 @@ export const getTrendingFeed = asyncHandler(async (req, res) => {
     .populate('shop', 'title rating')
     .skip(skip)
     .limit(parseInt(limit))
-    .sort({ likes: -1, views: -1 });
+    .sort({ likes: -1, createdAt: -1 });
 
   const trendingShops = await Shop.find({ isActive: true })
     .populate('owner', 'name avatar')
-    .sort({ followers: -1, likes: -1, rating: -1 })
+    .sort({ followers: -1, rating: -1 })
     .limit(5);
 
   res.json({ 
